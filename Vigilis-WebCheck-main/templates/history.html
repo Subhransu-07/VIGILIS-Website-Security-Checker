@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}VIGILIS — Scan History{% endblock %}
+{% block content %}
+<section class="page-header">
+  <span class="eyebrow">Scan History</span>
+  <h1>Previous Assessments</h1>
+  <p class="hero-hint">Every assessment VIGILIS has performed, preserved chronologically.</p>
+</section>
+
+{% if scans %}
+<section class="history-full">
+  <table class="history-table">
+    <thead>
+      <tr><th>Website</th><th>Date</th><th>Score</th><th>Rating</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for scan in scans %}
+      <tr>
+        <td class="mono">{{ scan.hostname }}</td>
+        <td>{{ scan.scanned_at.split('T')[0] }}</td>
+        <td>{{ scan.score_total }}/100</td>
+        <td>
+          <span class="pill {{ 'rating-secure' if scan.score_rating == 'Secure' else ('rating-moderate' if scan.score_rating == 'Moderate' else 'rating-critical') }}">
+            {{ scan.score_rating }}
+          </span>
+        </td>
+        <td><a class="btn btn-secondary btn-small" href="{{ url_for('results', scan_id=scan.id) }}">View Report</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% else %}
+<section class="empty-state">
+  <p>No previous scans yet.</p>
+  <a class="btn btn-primary" href="{{ url_for('index') }}">Run Your First Assessment</a>
+</section>
+{% endif %}
+{% endblock %}

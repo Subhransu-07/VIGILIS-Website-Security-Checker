@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}VIGILIS — Assessment: {{ result.hostname }}{% endblock %}
+{% block content %}
+
+{% set score = result.score %}
+{% set rating_class = 'rating-secure' if score.rating == 'Secure' else ('rating-moderate' if score.rating == 'Moderate' else 'rating-critical') %}
+
+<section class="results-header">
+  <div>
+    <span class="eyebrow">Assessment Complete</span>
+    <h1 class="mono results-host">{{ result.hostname }}</h1>
+    <p class="results-meta">Scanned {{ result.scanned_at.split('T')[0] }} UTC</p>
+  </div>
+  <div class="score-badge {{ rating_class }}">
+    <span class="score-number">{{ score.total }}</span>
+    <span class="score-max">/ {{ score.max }}</span>
+    <span class="score-rating">{{ score.rating }}</span>
+  </div>
+</section>
+
+<section class="report-actions">
+  <a class="btn btn-secondary" href="{{ url_for('download_report', scan_id=result.id, fmt='txt') }}">Download TXT</a>
+  <a class="btn btn-secondary" href="{{ url_for('download_report', scan_id=result.id, fmt='html') }}">Download HTML</a>
+  <a class="btn btn-primary" href="{{ url_for('download_report', scan_id=result.id, fmt='pdf') }}">Download PDF</a>
+</section>
+
+<section class="module-grid">
+  <div class="module-card">
+    <h2>HTTPS Verification</h2>
+    {% set https_ev = result.evidence.https %}
+    <div class="fact-row">
+      <span>HTTPS Enabled</span>
+      <span class="{{ 'ok' if https_ev.https_available else 'missing' }}">
+        {{ 'Yes' if https_ev.https_available else 'No' }}
+      </span>
+    </div>
+    {% if https_ev.https_available and 'certificate_trusted' in https_ev and https_ev.certificate_trusted is not none %}
+    <div class="fact-row">
+      <span>Certificate Trusted</span>
+      <span class="{{ 'ok' if https_ev.certificate_trusted else 'missing' }}">
+        {{ 'Yes' if https_ev.certificate_trusted else 'No — see SSL Certificate panel' }}
+      </span>
+    </div>
+    {% endif %}
+    <div class="fact-row">
+      <span>HTTP Available</span>
+      <span>{{ 'Yes' if https_ev.http_available else 'No' }}</span>
+    </div>
+    <div class="fact-row">
+      <span>HTTP → HTTPS Redirect</span>
+      {% if not https_ev.http_available %}
+        <span class="muted">Not Tested (HTTP unreachable)</span>
+      {% else %}
+        <span class="{{ 'ok' if https_ev.http_redirects_to_https else 'missing' }}">
+          {{ 'Yes' if https_ev.http_redirects_to_https else 'No' }}
+        </span>
+      {% endif %}
+    </div>
+    {% if https_ev.error %}
+      <p class="module-error">{{ https_ev.error }}</p>
+    {% endif %}
+  </div>
+
+  <div class="module-card">
+    <h2>SSL Certificate</h2>
+    {% set ssl_ev = result.evidence.ssl %}
+    {% if ssl_ev.certificate_found %}
+      <div class="fact-row"><span>Issuer</span><span class="mono">{{ ssl_ev.issuer or 'Unknown' }}</span></div>
+      <div class="fact-row"><span>Valid From</span><span class="mono">{{ ssl_ev.valid_from }}</span></div>
+      <div class="fact-row"><span>Expires On</span><span class="mono">{{ ssl_ev.valid_until }}</span></div>
+      <div class="fact-row"><span>Days Remaining</span><span class="mono">{{ ssl_ev.days_remaining }}</span></div>
+      <div class="fact-row">
+        <span>Status</span>
+        <span class="{{ 'missing' if ssl_ev.is_expired else 'ok' }}">
+          {{ 'Expired' if ssl_ev.is_expired else 'Valid' }}
+        </span>
+      </div>
+      {% if 'trust_verified' in ssl_ev and ssl_ev.trust_verified is not none %}
+      <div class="fact-row">
+        <span>Trusted by Browsers</span>
+        <span class="{{ 'ok' if ssl_ev.trust_verified else 'missing' }}">
+          {{ 'Yes' if ssl_ev.trust_verified else 'No' }}
+        </span>
+      </div>
+      {% endif %}
+      {% if ssl_ev.is_self_signed %}
+        <p class="module-error">This certificate is self-signed.</p>
+      {% elif ssl_ev.trust_verified == false and ssl_ev.verification_error %}
+        <p class="module-error">{{ ssl_ev.verification_error }}</p>
+      {% endif %}
+    {% else %}
+      <p class="module-error">{{ ssl_ev.error or 'No certificate could be retrieved.' }}</p>
+    {% endif %}
+  </div>
+
+  <div class="module-card module-card-wide">
+    <h2>Security Headers</h2>
+    {% if result.evidence.headers.error %}
+      <p class="module-error">{{ result.evidence.headers.error }}</p>
+    {% endif %}
+    <table class="headers-table">
+      <thead>
+        <tr><th>Header</th><th>Status</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        {% for key, info in result.evidence.headers.headers.items() %}
+        <tr>
+          <td class="mono">{{ info.header_name }}</td>
+          <td class="{{ 'ok' if info.present else 'missing' }}">{{ 'Present' if info.present else 'Missing' }}</td>
+          <td class="muted-text">{{ info.purpose }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="score-breakdown">
+  <h2>Score Breakdown</h2>
+  <p class="section-hint">Every point is explainable — traced directly to evidence collected during the assessment.</p>
+  <div class="breakdown-list">
+    {% for item in score.breakdown %}
+    <div class="breakdown-row">
+      <div class="breakdown-label">{{ item.label }}</div>
+      <div class="breakdown-bar-track">
+        <div class="breakdown-bar-fill {{ 'fill-ok' if item.points_awarded == item.points_possible else 'fill-zero' }}"
+             style="width: {{ (item.points_awarded / item.points_possible * 100) if item.points_possible else 0 }}%"></div>
+      </div>
+      <div class="breakdown-points">{{ item.points_awarded }}/{{ item.points_possible }}</div>
+      <div class="breakdown-reason">{{ item.reason }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="recommendations">
+  <h2>Recommendations</h2>
+  <p class="section-hint">Prioritized guidance derived strictly from the evidence above.</p>
+  <div class="rec-list">
+    {% for rec in result.recommendations %}
+    <div class="rec-card severity-{{ rec.severity|lower }}">
+      <span class="rec-severity">{{ rec.severity }}</span>
+      <h3>{{ rec.finding }}</h3>
+      <p><strong>Risk:</strong> {{ rec.risk }}</p>
+      <p><strong>Recommendation:</strong> {{ rec.recommendation }}</p>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+{% if history|length > 1 %}
+<section class="history-preview">
+  <h2>Previous Scans for {{ result.hostname }}</h2>
+  <table class="history-table">
+    <thead><tr><th>Date</th><th>Score</th><th>Rating</th><th></th></tr></thead>
+    <tbody>
+      {% for scan in history %}
+      <tr>
+        <td>{{ scan.scanned_at.split('T')[0] }}</td>
+        <td>{{ scan.score_total }}/100</td>
+        <td>{{ scan.score_rating }}</td>
+        <td><a href="{{ url_for('results', scan_id=scan.id) }}">View</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+{% endblock %}

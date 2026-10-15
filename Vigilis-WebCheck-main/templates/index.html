@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}VIGILIS — New Assessment{% endblock %}
+{% block content %}
+<section class="hero">
+  <span class="eyebrow">Professional Website Security Assessment Platform</span>
+  <h1 class="hero-title">How secure is your website?</h1>
+  <p class="hero-sub">
+    VIGILIS independently evaluates HTTPS enforcement, TLS certificate health, and security
+    header configuration — then explains exactly why it reached its conclusions.
+  </p>
+
+  <form class="scan-form" action="{{ url_for('scan') }}" method="post" autocomplete="off">
+    <label for="website" class="sr-only">Website address</label>
+    <input
+      type="text"
+      id="website"
+      name="website"
+      placeholder="example.com"
+      class="scan-input"
+      required
+    >
+    <button type="submit" class="scan-button">
+      Run Assessment
+    </button>
+  </form>
+  <p class="hero-hint">Enter a domain or full URL, such as <span class="mono">example.com</span> or <span class="mono">https://example.com</span></p>
+</section>
+
+<section class="feature-grid">
+  <div class="feature-card">
+    <span class="feature-index">01</span>
+    <h3>HTTPS Verification</h3>
+    <p>Independently probes both HTTP and HTTPS to confirm encryption is genuinely enforced, not assumed.</p>
+  </div>
+  <div class="feature-card">
+    <span class="feature-index">02</span>
+    <h3>SSL Certificate Validation</h3>
+    <p>Inspects the presented certificate — issuer, validity window, and expiry — directly at the TLS layer.</p>
+  </div>
+  <div class="feature-card">
+    <span class="feature-index">03</span>
+    <h3>Security Header Analysis</h3>
+    <p>Checks for HSTS, CSP, X-Frame-Options, and other headers that harden a site against common attacks.</p>
+  </div>
+  <div class="feature-card">
+    <span class="feature-index">04</span>
+    <h3>Explainable Scoring</h3>
+    <p>Every point awarded or withheld traces back to specific evidence — never an opaque black box.</p>
+  </div>
+</section>
+{% endblock %}

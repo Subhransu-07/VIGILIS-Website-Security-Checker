@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}VIGILIS — Something Went Wrong{% endblock %}
+{% block content %}
+<section class="empty-state">
+  <p class="eyebrow">Notice</p>
+  <h1>{{ message }}</h1>
+  <a class="btn btn-primary" href="{{ url_for('index') }}">Return to VIGILIS</a>
+</section>
+{% endblock %}
